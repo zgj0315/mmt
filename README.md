@@ -8,3 +8,7 @@ Multimedia Management Tool
 ```
 mmt copy path_src path_dst
 ```
+
+## TODO
+- [x] 文件目录遍历(walkdir)
+- [ ] EXIF信息读取
