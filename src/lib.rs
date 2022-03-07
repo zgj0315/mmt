@@ -1,10 +1,19 @@
+use exif::{In, Reader, Tag};
+use std::env;
 use std::fs::File;
 use std::io;
 use std::io::BufReader;
 use std::io::{Error, ErrorKind};
 use walkdir::{DirEntry, WalkDir};
 
-use exif::{In, Reader, Tag};
+pub fn read_input() -> Result<String, &'static str> {
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 2 {
+        return Err("Please input like this: {} /home/zhaogj/photo");
+    }
+    Ok(args[1].clone())
+}
+
 pub fn find_media(path: &str) {
     let walker = WalkDir::new(path).into_iter();
     for entry in walker.filter_entry(|e| !is_hidden(e)) {

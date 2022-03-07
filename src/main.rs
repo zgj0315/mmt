@@ -1,13 +1,10 @@
 use mmt::find_media;
+use mmt::read_input;
 
-use std::env;
-use std::process;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        println!("Please input like this: {} /home/zhaogj/photo", args[0]);
-        process::exit(1);
+    match read_input(){
+        Ok(path)=>find_media(&path),
+        Err(e)=>panic!("{}", e),
     }
-    find_media(&args[1]);
 }
