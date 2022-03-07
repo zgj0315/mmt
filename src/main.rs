@@ -1,7 +1,18 @@
+use std::env;
+use std::process::exit;
 use walkdir::{DirEntry, WalkDir};
 
 fn main() {
-    let walker = WalkDir::new("/Users/zhaoguangjian/tmp/input").into_iter();
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 2 {
+        println!("Please input like this: {} /home/zhaogj/photo", args[0]);
+        exit(0x0100);
+    }
+    find_media(&args[1]);
+}
+
+fn find_media(path: &str) {
+    let walker = WalkDir::new(path).into_iter();
     for entry in walker.filter_entry(|e| !is_hidden(e)) {
         let entry = entry.unwrap();
         if is_media(&entry) {
