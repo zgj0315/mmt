@@ -6,6 +6,14 @@ use std::io::BufReader;
 use std::io::{Error, ErrorKind};
 use walkdir::{DirEntry, WalkDir};
 
+pub fn parse_config(args: &[String]) -> Result<&str, &'static str> {
+    if args.len() != 2 {
+        Err("arguments count must be 2.")
+    } else {
+        Ok(&args[1])
+    }
+}
+
 pub fn read_input() -> Result<String, &'static str> {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
@@ -26,23 +34,25 @@ pub fn find_media(path: &str) {
     }
 }
 
-pub fn read_exif(path: &str) -> Result<String, io::Error> {
+pub fn read_exif(path: &str) -> Result<String, &'static str> {
     let file = File::open(path);
     let file = match file {
         Ok(file) => file,
-        Err(e) => return Err(e),
+        Err(e) => return Err("read file err"),
     };
 
-    let exif = Reader::new()
-        .read_from_container(&mut BufReader::new(&file))
-        .unwrap();
+    let exif = match Reader::new().read_from_container(&mut BufReader::new(&file)) {
+        Ok(exif) => exif,
+        Err(e) => return Err("read exif container err"),
+    };
+
     match exif.get_field(Tag::DateTime, In::PRIMARY) {
         Some(data_time) => Ok(data_time.display_value().to_string()),
-        None => Err(Error::new(ErrorKind::Other, "")),
+        None => Err("read exif field err"),
     }
 }
 
-fn is_hidden(entry: &DirEntry) -> bool {
+pub fn is_hidden(entry: &DirEntry) -> bool {
     entry
         .file_name()
         .to_str()
@@ -50,7 +60,7 @@ fn is_hidden(entry: &DirEntry) -> bool {
         .unwrap_or(false)
 }
 
-fn is_media(entry: &DirEntry) -> bool {
+pub fn is_media(entry: &DirEntry) -> bool {
     entry
         .file_name()
         .to_str()
