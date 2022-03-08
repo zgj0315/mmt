@@ -10,6 +10,7 @@ mmt copy path_src path_dst
 ```
 
 ## TODO
-- [ ] 读取参数
+- [x] 读取参数
 - [x] 文件目录遍历(walkdir)
-- [ ] EXIF信息读取
+- [x] EXIF信息读取
+- [x] read jpeg exif
