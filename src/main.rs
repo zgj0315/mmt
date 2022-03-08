@@ -24,10 +24,11 @@ fn main() {
 
         if is_media(&entry) {
             let path_str = entry.path().display().to_string();
+            println!("path: {}", &path_str);
             match read_exif(&path_str) {
                 Ok(data_time) => println!("create time: {}", data_time),
                 Err(e) => {
-                    println!("exif read err: {}", e)
+                    println!("read datetime failed: {}", e)
                 }
             };
         }

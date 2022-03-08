@@ -1,9 +1,8 @@
 use exif::{In, Reader, Tag};
 use std::env;
 use std::fs::File;
-use std::io;
 use std::io::BufReader;
-use std::io::{Error, ErrorKind};
+use std::io::ErrorKind;
 use walkdir::{DirEntry, WalkDir};
 
 pub fn parse_config(args: &[String]) -> Result<&str, &'static str> {
@@ -38,17 +37,21 @@ pub fn read_exif(path: &str) -> Result<String, &'static str> {
     let file = File::open(path);
     let file = match file {
         Ok(file) => file,
-        Err(e) => return Err("read file err"),
+        Err(e) => match e.kind() {
+            ErrorKind::NotFound => return Err("file not found."),
+            _other_error => return Err("read failed."),
+        },
     };
-
     let exif = match Reader::new().read_from_container(&mut BufReader::new(&file)) {
         Ok(exif) => exif,
-        Err(e) => return Err("read exif container err"),
+        Err(e) => {
+            println!("{}", e);
+            return Err("read exif failed");
+        }
     };
-
     match exif.get_field(Tag::DateTime, In::PRIMARY) {
         Some(data_time) => Ok(data_time.display_value().to_string()),
-        None => Err("read exif field err"),
+        None => Err("not have datetime"),
     }
 }
 
