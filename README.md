@@ -14,3 +14,5 @@ mmt copy path_src path_dst
 - [x] 文件目录遍历(walkdir)
 - [x] EXIF信息读取
 - [x] read jpeg exif
+- [ ] export file
+- [ ] time format
