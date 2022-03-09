@@ -1,8 +1,11 @@
+use chrono::prelude::*;
 use exif::{In, Reader, Tag};
 use std::env;
+use std::fs;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::ErrorKind;
+use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
 
 pub fn parse_config(args: &[String]) -> Result<&str, &'static str> {
@@ -70,6 +73,28 @@ pub fn is_media(entry: &DirEntry) -> bool {
         .map(|s: &str| s.to_lowercase().ends_with(".jpg") || s.to_lowercase().ends_with(".jpeg"))
         .unwrap_or(false)
 }
+
+pub fn copy_to_dst(dst: &str, file: &str, date_time: &str) {
+    let dt = Utc
+        .datetime_from_str(date_time, "%Y-%m-%d %H:%M:%S")
+        .unwrap();
+    let path_str = format!(
+        "{}/{}/{}{:02}/{}{:02}{:02}",
+        dst,
+        dt.year(),
+        dt.year(),
+        dt.month(),
+        dt.year(),
+        dt.month(),
+        dt.day()
+    );
+    let file_path = Path::new(file);
+    let file_name = file_path.file_name().unwrap().to_str().unwrap();
+    let file_dst_str = format!("{}/{}", path_str, file_name);
+    fs::create_dir_all(&path_str).unwrap();
+    fs::copy(&file, &file_dst_str).unwrap();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

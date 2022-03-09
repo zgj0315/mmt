@@ -26,7 +26,10 @@ fn main() {
             let path_str = entry.path().display().to_string();
             println!("path: {}", &path_str);
             match read_exif(&path_str) {
-                Ok(data_time) => println!("create time: {}", data_time),
+                Ok(data_time) => {
+                    println!("create time: {}", data_time);
+                    copy_to_dst("/Users/zhaoguangjian/tmp", &path_str, &data_time);
+                }
                 Err(e) => {
                     println!("read datetime failed: {}", e)
                 }
