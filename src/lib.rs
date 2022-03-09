@@ -8,11 +8,18 @@ use std::io::ErrorKind;
 use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
 
-pub fn parse_config(args: &[String]) -> Result<&str, &'static str> {
-    if args.len() != 2 {
-        Err("arguments count must be 2.")
+pub struct Config {
+    pub src_path: String,
+    pub dst_path: String,
+}
+
+pub fn parse_config(args: &[String]) -> Result<Config, &'static str> {
+    if args.len() != 3 {
+        Err("arguments count must be 3.")
     } else {
-        Ok(&args[1])
+        let src_path = args[1].clone();
+        let dst_path = args[2].clone();
+        Ok(Config { src_path, dst_path })
     }
 }
 
@@ -93,6 +100,7 @@ pub fn copy_to_dst(dst: &str, file: &str, date_time: &str) {
     let file_dst_str = format!("{}/{}", path_str, file_name);
     fs::create_dir_all(&path_str).unwrap();
     fs::copy(&file, &file_dst_str).unwrap();
+    println!("copy {} to {}", file, file_dst_str);
 }
 
 #[cfg(test)]
