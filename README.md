@@ -6,13 +6,5 @@ Multimedia Management Tool
 ### 按照时间归档
 按照多媒体文件创建时间，分类归档文件
 ```
-mmt copy path_src path_dst
+mmt copy src_dir dst_dir
 ```
-
-## TODO
-- [x] 读取参数
-- [x] 文件目录遍历(walkdir)
-- [x] EXIF信息读取
-- [x] read jpeg exif
-- [ ] export file
-- [ ] time format

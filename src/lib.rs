@@ -3,23 +3,25 @@ use exif::{In, Reader, Tag};
 use std::env;
 use std::fs;
 use std::fs::File;
+use std::io;
 use std::io::BufReader;
 use std::io::ErrorKind;
+use std::io::Read;
 use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
 
 pub struct Config {
-    pub src_path: String,
-    pub dst_path: String,
+    pub src_dir: String,
+    pub dst_dir: String,
 }
 
 pub fn parse_config(args: &[String]) -> Result<Config, &'static str> {
     if args.len() != 3 {
         Err("arguments count must be 3.")
     } else {
-        let src_path = args[1].clone();
-        let dst_path = args[2].clone();
-        Ok(Config { src_path, dst_path })
+        let src_dir = args[1].clone();
+        let dst_dir = args[2].clone();
+        Ok(Config { src_dir, dst_dir })
     }
 }
 
@@ -81,28 +83,55 @@ pub fn is_media(entry: &DirEntry) -> bool {
         .unwrap_or(false)
 }
 
-pub fn copy_to_dst(dst: &str, file: &str, date_time: &str) {
-    let dt = Utc
-        .datetime_from_str(date_time, "%Y-%m-%d %H:%M:%S")
+pub fn copy_to_dst(dst_dir: &str, file_path: &str, create_time_str: &str) {
+    let create_time = Utc
+        .datetime_from_str(create_time_str, "%Y-%m-%d %H:%M:%S")
         .unwrap();
-    let path_str = format!(
+    let dst_dir = format!(
         "{}/{}/{}{:02}/{}{:02}{:02}",
-        dst,
-        dt.year(),
-        dt.year(),
-        dt.month(),
-        dt.year(),
-        dt.month(),
-        dt.day()
+        dst_dir,
+        create_time.year(),
+        create_time.year(),
+        create_time.month(),
+        create_time.year(),
+        create_time.month(),
+        create_time.day()
     );
-    let file_path = Path::new(file);
-    let file_name = file_path.file_name().unwrap().to_str().unwrap();
-    let file_dst_str = format!("{}/{}", path_str, file_name);
-    fs::create_dir_all(&path_str).unwrap();
-    fs::copy(&file, &file_dst_str).unwrap();
-    println!("copy {} to {}", file, file_dst_str);
+    let src_file_path = Path::new(file_path);
+    let src_file_name = src_file_path.file_name().unwrap().to_str().unwrap();
+    let dst_file_path = format!("{}/{}", dst_dir, src_file_name);
+    let dst_file_path = Path::new(&dst_file_path);
+    let is_same = match is_same_file(src_file_path, dst_file_path) {
+        Ok(is_same) => is_same,
+        Err(_) => false,
+    };
+    if is_same {
+        println!("{:?} is same to {:?}", src_file_path, dst_file_path);
+    } else {
+        fs::create_dir_all(dst_dir).unwrap();
+        fs::copy(src_file_path, dst_file_path).unwrap();
+        println!("copy {:?} to {:?}", src_file_path, dst_file_path);
+    }
 }
 
+pub fn is_same_file<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<bool> {
+    let _len_p = fs::metadata(&p)?.len();
+    let _len_q = fs::metadata(&q)?.len();
+    if _len_p == _len_q {
+        let mut _file_p = fs::File::open(&p)?;
+        let mut _buffer_p = Vec::new();
+        _file_p.read_to_end(&mut _buffer_p)?;
+        let _md5_p = md5::compute(_buffer_p);
+        let mut _file_q = fs::File::open(&q)?;
+        let mut _buffer_q = Vec::new();
+        _file_q.read_to_end(&mut _buffer_q)?;
+        let _md5_q = md5::compute(_buffer_q);
+        if _md5_p.eq(&_md5_q) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -129,5 +158,9 @@ mod tests {
             let entry = entry.unwrap();
             assert_eq!(is_media(&entry), true);
         }
+    }
+    #[test]
+    fn test_is_same_file() {
+        assert!(!is_same_file("./README.md", "./Cargo.toml").unwrap());
     }
 }
