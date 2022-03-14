@@ -61,7 +61,7 @@ pub fn read_exif(path: &str) -> Result<String, &'static str> {
             return Err("read exif failed");
         }
     };
-    match exif.get_field(Tag::DateTime, In::PRIMARY) {
+    match exif.get_field(Tag::DateTimeOriginal, In::PRIMARY) {
         Some(data_time) => Ok(data_time.display_value().to_string()),
         None => Err("not have datetime"),
     }
@@ -79,7 +79,11 @@ pub fn is_media(entry: &DirEntry) -> bool {
     entry
         .file_name()
         .to_str()
-        .map(|s: &str| s.to_lowercase().ends_with(".jpg") || s.to_lowercase().ends_with(".jpeg"))
+        .map(|s: &str| {
+            s.to_lowercase().ends_with(".jpg")
+                || s.to_lowercase().ends_with(".jpeg")
+                || s.to_lowercase().ends_with(".cr2")
+        })
         .unwrap_or(false)
 }
 
