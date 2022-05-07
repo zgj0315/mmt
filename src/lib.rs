@@ -8,6 +8,8 @@ use std::io::BufReader;
 use std::io::ErrorKind;
 use std::io::Read;
 use std::path::Path;
+use std::sync::Arc;
+use std::sync::Mutex;
 use walkdir::{DirEntry, WalkDir};
 
 pub struct Config {
@@ -167,4 +169,54 @@ mod tests {
     fn test_is_same_file() {
         assert!(!is_same_file("./README.md", "./Cargo.toml").unwrap());
     }
+}
+
+pub async fn read_file_list_and_input_buffer(
+    src_dir: &String,
+    file_buffer: Arc<Mutex<Vec<String>>>,
+) {
+    println!("src_dir: {}", src_dir);
+    for i in 0..1000 {
+        loop {
+            let mut buffer_size: usize = 0;
+            let mut file_list = file_buffer.lock().unwrap();
+            buffer_size = file_list.len();
+            if buffer_size < 10 {
+                file_list.push(format!("file_{}", i));
+                drop(file_list);
+                break;
+            } else {
+                drop(file_list);
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                println!("buffer is full");
+            }
+        }
+    }
+    println!("read file end");
+}
+
+pub async fn read_file_info_and_copy_file(dst_dir: &String, file_buffer: Arc<Mutex<Vec<String>>>) {
+    println!("dst_dir: {}", dst_dir);
+    let mut sleep_time = 0;
+    while sleep_time < 7 {
+        let mut src_path: String = String::from("");
+        let mut file_list = file_buffer.lock().unwrap();
+        if file_list.is_empty() {
+            drop(file_list);
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            sleep_time += 1;
+            println!("no file to read");
+        } else {
+            src_path = file_list[0].clone();
+            file_list.remove(0);
+            drop(file_list);
+            sleep_time = 0;
+        }
+
+        if sleep_time == 0 {
+            println!("copy file: {}", src_path);
+            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+        }
+    }
+    println!("copy file end");
 }
