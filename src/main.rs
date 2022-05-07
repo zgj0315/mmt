@@ -1,9 +1,10 @@
-use mmt::*;
 use std::env;
 use std::process;
 use std::sync::Arc;
 use std::sync::Mutex;
-use walkdir::WalkDir;
+
+use mmt::read_file_info_and_copy_file;
+use mmt::read_file_list_and_input_buffer;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -31,39 +32,4 @@ async fn main() {
     let future_copy = read_file_info_and_copy_file(dst_dir, file_buffer.clone());
     // join
     tokio::join!(future_read, future_copy);
-}
-fn main_bak() {
-    let args: Vec<String> = env::args().collect();
-    let config = match parse_config(&args) {
-        Ok(config) => config,
-        Err(e) => {
-            println!(
-                "{}\neg: {} /home/zhaogj/photo /home/zhaogj/export",
-                e, args[0]
-            );
-            process::exit(1);
-        }
-    };
-    let walker = WalkDir::new(config.src_dir).into_iter();
-    for entry in walker.filter_entry(|e| !is_hidden(e)) {
-        let entry = match entry {
-            Ok(entry) => entry,
-            Err(e) => {
-                println!("{}\nPlease check your path.", e);
-                process::exit(1);
-            }
-        };
-
-        if is_media(&entry) {
-            let file_path = entry.path().display().to_string();
-            match read_exif(&file_path) {
-                Ok(create_time) => {
-                    copy_to_dst(&config.dst_dir, &file_path, &create_time);
-                }
-                Err(e) => {
-                    println!("read datetime failed: {}", e)
-                }
-            };
-        }
-    }
 }

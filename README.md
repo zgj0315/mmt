@@ -8,6 +8,3 @@ Multimedia Management Tool
 ```
 mmt src_dir dst_dir
 ```
-# TodoList
-- 采用tokio框架重写
-- 按照月份存储

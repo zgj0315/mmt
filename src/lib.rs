@@ -1,65 +1,69 @@
 use chrono::prelude::*;
 use exif::{In, Reader, Tag};
-use std::env;
 use std::fs;
-use std::fs::File;
-use std::io;
-use std::io::BufReader;
-use std::io::ErrorKind;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
 use walkdir::{DirEntry, WalkDir};
 
-pub struct Config {
-    pub src_dir: String,
-    pub dst_dir: String,
-}
-
-pub fn parse_config(args: &[String]) -> Result<Config, &'static str> {
-    if args.len() != 3 {
-        Err("arguments count must be 3.")
-    } else {
-        let src_dir = args[1].clone();
-        let dst_dir = args[2].clone();
-        Ok(Config { src_dir, dst_dir })
-    }
-}
-
-pub fn read_input() -> Result<String, &'static str> {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        return Err("Please input like this: {} /home/zhaogj/photo");
-    }
-    Ok(args[1].clone())
-}
-
-pub fn find_media(path: &str) {
-    let walker = WalkDir::new(path).into_iter();
+pub async fn read_file_list_and_input_buffer(
+    src_dir: &String,
+    file_buffer: Arc<Mutex<Vec<String>>>,
+) {
+    let walker = WalkDir::new(src_dir).into_iter();
     for entry in walker.filter_entry(|e| !is_hidden(e)) {
-        let entry = entry.unwrap();
-        if is_media(&entry) {
-            let path = entry.path().display().to_string();
-            // println!("path: {}", &path);
-            println!("create time: {}", read_exif(&path).unwrap());
+        loop {
+            let mut file_list = file_buffer.lock().unwrap();
+            if file_list.len() < 10 {
+                file_list.push(entry.unwrap().path().display().to_string());
+                drop(file_list);
+                break;
+            } else {
+                drop(file_list);
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            }
+        }
+    }
+}
+
+pub async fn read_file_info_and_copy_file(dst_dir: &String, file_buffer: Arc<Mutex<Vec<String>>>) {
+    let mut sleep_time = 0;
+    while sleep_time < 7 {
+        let mut file_path: String = String::from("");
+        let mut file_list = file_buffer.lock().unwrap();
+        if file_list.is_empty() {
+            drop(file_list);
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            sleep_time += 1;
+        } else {
+            file_path = file_list[0].clone();
+            file_list.remove(0);
+            drop(file_list);
+            sleep_time = 0;
+        }
+
+        if sleep_time == 0 {
+            if is_media(&file_path) {
+                match read_exif(&file_path) {
+                    Ok(create_time) => {
+                        copy_to_dst(dst_dir, &file_path, &create_time);
+                    }
+                    Err(e) => {
+                        println!("read file: {} datetime failed: {}", file_path, e)
+                    }
+                };
+            }
         }
     }
 }
 
 pub fn read_exif(path: &str) -> Result<String, &'static str> {
-    let file = File::open(path);
-    let file = match file {
-        Ok(file) => file,
-        Err(e) => match e.kind() {
-            ErrorKind::NotFound => return Err("file not found."),
-            _other_error => return Err("read failed."),
-        },
-    };
-    let exif = match Reader::new().read_from_container(&mut BufReader::new(&file)) {
+    let file = std::fs::File::open(path).unwrap();
+    let exif = match Reader::new().read_from_container(&mut std::io::BufReader::new(&file)) {
         Ok(exif) => exif,
         Err(e) => {
-            println!("{}", e);
+            println!("{}, file: {}", e, path);
             return Err("read exif failed");
         }
     };
@@ -77,16 +81,15 @@ pub fn is_hidden(entry: &DirEntry) -> bool {
         .unwrap_or(false)
 }
 
-pub fn is_media(entry: &DirEntry) -> bool {
-    entry
-        .file_name()
-        .to_str()
-        .map(|s: &str| {
-            s.to_lowercase().ends_with(".jpg")
-                || s.to_lowercase().ends_with(".jpeg")
-                || s.to_lowercase().ends_with(".cr2")
-        })
-        .unwrap_or(false)
+pub fn is_media(file_path: &String) -> bool {
+    if file_path.to_lowercase().ends_with(".jpg")
+        || file_path.to_lowercase().ends_with(".jpeg")
+        || file_path.to_lowercase().ends_with(".cr2")
+    {
+        true
+    } else {
+        false
+    }
 }
 
 pub fn copy_to_dst(dst_dir: &str, file_path: &str, create_time_str: &str) {
@@ -112,15 +115,15 @@ pub fn copy_to_dst(dst_dir: &str, file_path: &str, create_time_str: &str) {
         Err(_) => false,
     };
     if is_same {
-        println!("{:?} is same to {:?}", src_file_path, dst_file_path);
+        println!("same file: {:?}, {:?}", src_file_path, dst_file_path);
     } else {
-        fs::create_dir_all(dst_dir).unwrap();
-        fs::copy(src_file_path, dst_file_path).unwrap();
+        std::fs::create_dir_all(dst_dir).unwrap();
+        std::fs::copy(src_file_path, dst_file_path).unwrap();
         println!("copy {:?} to {:?}", src_file_path, dst_file_path);
     }
 }
 
-pub fn is_same_file<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<bool> {
+pub fn is_same_file<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> std::io::Result<bool> {
     let _len_p = fs::metadata(&p)?.len();
     let _len_q = fs::metadata(&q)?.len();
     if _len_p == _len_q {
@@ -161,62 +164,12 @@ mod tests {
             assert_eq!(is_hidden(&entry), false);
         }
         for entry in WalkDir::new("./data/IMG_2075.JPG") {
-            let entry = entry.unwrap();
-            assert_eq!(is_media(&entry), true);
+            let file_path = entry.unwrap().path().display().to_string();
+            assert_eq!(is_media(&file_path), true);
         }
     }
     #[test]
     fn test_is_same_file() {
         assert!(!is_same_file("./README.md", "./Cargo.toml").unwrap());
     }
-}
-
-pub async fn read_file_list_and_input_buffer(
-    src_dir: &String,
-    file_buffer: Arc<Mutex<Vec<String>>>,
-) {
-    println!("src_dir: {}", src_dir);
-    for i in 0..1000 {
-        loop {
-            let mut buffer_size: usize = 0;
-            let mut file_list = file_buffer.lock().unwrap();
-            buffer_size = file_list.len();
-            if buffer_size < 10 {
-                file_list.push(format!("file_{}", i));
-                drop(file_list);
-                break;
-            } else {
-                drop(file_list);
-                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                println!("buffer is full");
-            }
-        }
-    }
-    println!("read file end");
-}
-
-pub async fn read_file_info_and_copy_file(dst_dir: &String, file_buffer: Arc<Mutex<Vec<String>>>) {
-    println!("dst_dir: {}", dst_dir);
-    let mut sleep_time = 0;
-    while sleep_time < 7 {
-        let mut src_path: String = String::from("");
-        let mut file_list = file_buffer.lock().unwrap();
-        if file_list.is_empty() {
-            drop(file_list);
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-            sleep_time += 1;
-            println!("no file to read");
-        } else {
-            src_path = file_list[0].clone();
-            file_list.remove(0);
-            drop(file_list);
-            sleep_time = 0;
-        }
-
-        if sleep_time == 0 {
-            println!("copy file: {}", src_path);
-            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-        }
-    }
-    println!("copy file end");
 }
