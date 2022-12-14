@@ -1,15 +1,15 @@
 use chrono::{DateTime, Local, TimeZone};
 use exif::{In, Reader, Tag};
 use std::{
-    fs::{copy, create_dir_all, File},
-    io::BufReader,
-    path::{Path, PathBuf},
+    fs::{self, copy, create_dir_all, File},
+    io::{BufReader, Read},
+    path::Path,
 };
 use walkdir::WalkDir;
 
 pub fn copy_raw_file(input_path: &Path, output_path: &Path) {
     let walk_dir = WalkDir::new(input_path);
-    for entry in walk_dir {
+    'walk_dir: for entry in walk_dir {
         let entry = entry.unwrap();
         let file_type = entry.file_type();
         if file_type.is_file() {
@@ -21,9 +21,48 @@ pub fn copy_raw_file(input_path: &Path, output_path: &Path) {
                 .ends_with(".cr2")
             {
                 let input_file_path = entry.path();
-                // 计算导出文件
-                let output_file_path = make_output_path(output_path, input_file_path);
-                // 复制文件
+
+                let create_time = get_create_time(input_file_path);
+                let yyyy = create_time.format("%Y").to_string();
+                let yyyymm = create_time.format("%Y%m").to_string();
+                let output_path = output_path.join(yyyy).join(yyyymm);
+                if !output_path.exists() {
+                    create_dir_all(&output_path).unwrap();
+                }
+                let mut output_file_path;
+                let mut count = 0;
+                'count_loop: loop {
+                    if count == 0 {
+                        let input_file_name =
+                            input_file_path.file_name().unwrap().to_str().unwrap();
+                        output_file_path = output_path.join(input_file_name);
+                        if output_file_path.exists() {
+                            if is_same_file(input_file_path, &output_file_path) {
+                                log::info!("file {:?} already exists", input_file_path);
+                                continue 'walk_dir;
+                            }
+                            count += 1;
+                        } else {
+                            break 'count_loop;
+                        }
+                    } else {
+                        let input_file_name =
+                            input_file_path.file_name().unwrap().to_str().unwrap();
+                        let (file_name, suffix) = input_file_name.split_once(".").unwrap();
+                        let input_file_name = format!("{}_{}.{}", file_name, count, suffix);
+                        output_file_path = output_path.join(input_file_name);
+                        if output_file_path.exists() {
+                            if is_same_file(input_file_path, &output_file_path) {
+                                log::info!("file {:?} already exists", input_file_path);
+                                continue 'walk_dir;
+                            }
+                            count += 1;
+                        } else {
+                            break 'count_loop;
+                        }
+                    }
+                }
+
                 log::info!("copying {:?} to {:?}", input_file_path, output_file_path);
                 copy(input_file_path, output_file_path).unwrap();
             }
@@ -69,39 +108,25 @@ fn get_create_time(path: &Path) -> DateTime<Local> {
     }
 }
 
-fn make_output_path(output_path: &Path, input_file_path: &Path) -> PathBuf {
-    // 计算拍摄时间
-    let create_time = get_create_time(input_file_path);
-    let yyyy = create_time.format("%Y").to_string();
-    let yyyymm = create_time.format("%Y%m").to_string();
-    let output_path = output_path.join(yyyy).join(yyyymm);
-    if !output_path.exists() {
-        create_dir_all(&output_path).unwrap();
+fn is_same_file(path_a: &Path, path_b: &Path) -> bool {
+    let size_a = fs::metadata(path_a).unwrap().len();
+    let size_b = fs::metadata(path_b).unwrap().len();
+
+    if size_a == size_b {
+        return true;
     }
-    let mut output_file_path;
-    let mut count = 0;
-    loop {
-        if count == 0 {
-            let input_file_name = input_file_path.file_name().unwrap().to_str().unwrap();
-            output_file_path = output_path.join(input_file_name);
-            if output_file_path.exists() {
-                count += 1;
-            } else {
-                break;
-            }
-        } else {
-            let input_file_name = input_file_path.file_name().unwrap().to_str().unwrap();
-            let (file_name, suffix) = input_file_name.split_once(".").unwrap();
-            let input_file_name = format!("{}_{}.{}", file_name, count, suffix);
-            output_file_path = output_path.join(input_file_name);
-            if output_file_path.exists() {
-                count += 1;
-            } else {
-                break;
-            }
-        }
+    let mut file_a = File::open(path_a).unwrap();
+    let mut file_b = File::open(path_b).unwrap();
+    let mut buf = Vec::new();
+    file_a.read_to_end(&mut buf).unwrap();
+    let md5_a = md5::compute(buf);
+    let mut buf = Vec::new();
+    file_b.read_to_end(&mut buf).unwrap();
+    let md5_b = md5::compute(buf);
+    if md5_a == md5_b {
+        return true;
     }
-    output_file_path.to_path_buf()
+    false
 }
 
 #[cfg(test)]
@@ -114,7 +139,7 @@ mod tests {
     use chrono::{DateTime, Local};
     use walkdir::WalkDir;
 
-    use super::get_create_time;
+    use super::{get_create_time, is_same_file};
 
     #[test]
     fn it_works() {
@@ -179,5 +204,13 @@ mod tests {
         let path = Path::new("./input/IMG_7705.CR2");
         let create_time = get_create_time(path);
         println!("create_time: {:?}", create_time);
+    }
+
+    // cargo test lib::tests::test_is_same_file -- --nocapture
+    #[test]
+    fn test_is_same_file() {
+        let path_a = Path::new("./input/IMG_7705.CR2");
+        let path_b = Path::new("./input/IMG_7706.CR2");
+        println!("same: {}", is_same_file(path_a, path_b));
     }
 }
