@@ -21,7 +21,6 @@ pub fn copy_raw_file(input_path: &Path, output_path: &Path) {
                 .ends_with(".cr2")
             {
                 let input_file_path = entry.path();
-
                 let create_time = get_create_time(input_file_path);
                 let yyyy = create_time.format("%Y").to_string();
                 let yyyymm = create_time.format("%Y%m").to_string();
@@ -111,9 +110,9 @@ fn get_create_time(path: &Path) -> DateTime<Local> {
 fn is_same_file(path_a: &Path, path_b: &Path) -> bool {
     let size_a = fs::metadata(path_a).unwrap().len();
     let size_b = fs::metadata(path_b).unwrap().len();
-
-    if size_a == size_b {
-        return true;
+    if size_a != size_b {
+        log::info!("diff size, {:?} and {:?}", path_a, path_b);
+        return false;
     }
     let mut file_a = File::open(path_a).unwrap();
     let mut file_b = File::open(path_b).unwrap();
@@ -124,9 +123,11 @@ fn is_same_file(path_a: &Path, path_b: &Path) -> bool {
     file_b.read_to_end(&mut buf).unwrap();
     let md5_b = md5::compute(buf);
     if md5_a == md5_b {
+        log::info!("same md5, {:?} and {:?}", path_a, path_b);
         return true;
+    } else {
+        return false;
     }
-    false
 }
 
 #[cfg(test)]
@@ -201,7 +202,7 @@ mod tests {
     // cargo test lib::tests::test_get_create_time -- --nocapture
     #[test]
     fn test_get_create_time() {
-        let path = Path::new("./input/IMG_7705.CR2");
+        let path = Path::new("/Volumes/photo/original/2022/202202/20220205/IMG_2455.CR2");
         let create_time = get_create_time(path);
         println!("create_time: {:?}", create_time);
     }
@@ -209,8 +210,8 @@ mod tests {
     // cargo test lib::tests::test_is_same_file -- --nocapture
     #[test]
     fn test_is_same_file() {
-        let path_a = Path::new("./input/IMG_7705.CR2");
-        let path_b = Path::new("./input/IMG_7706.CR2");
+        let path_a = Path::new("/Volumes/photo/original/2022/202202/20220205/IMG_2455.CR2");
+        let path_b = Path::new("/Volumes/photo/original/2022/202202/20220205/IMG_2455.CR2");
         println!("same: {}", is_same_file(path_a, path_b));
     }
 }
