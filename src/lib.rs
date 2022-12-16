@@ -1,5 +1,6 @@
 use chrono::{DateTime, Local, TimeZone};
 use exif::{In, Reader, Tag};
+use rusqlite::Connection;
 use std::{
     fs::{self, copy, create_dir_all, File},
     io::{BufReader, Read},
@@ -8,6 +9,14 @@ use std::{
 use walkdir::WalkDir;
 
 pub fn copy_raw_file(input_path: &Path, output_path: &Path) {
+    let db_path = output_path.join("file.db");
+    let conn = Connection::open(db_path).unwrap();
+    let sql = "CREATE TABLE IF NOT EXISTS tbl_file (
+        file_path  TEXT PRIMARY KEY,
+        file_size  INTEGER NOT NULL,
+        file_md5  TEXT NOT NULL
+    )";
+    conn.execute(sql, ()).unwrap();
     let walk_dir = WalkDir::new(input_path);
     'walk_dir: for entry in walk_dir {
         let entry = entry.unwrap();
@@ -106,7 +115,30 @@ fn get_create_time(path: &Path) -> DateTime<Local> {
         }
     }
 }
-
+#[derive(Debug)]
+struct TblFile {
+    file_path: String,
+    file_size: usize,
+    file_md5: String,
+}
+fn get_output_file_from_db(file_path: &str, conn: &Connection) -> Option<TblFile> {
+    let sql = format!("SELECT * FROM tbl_file WHERE file_path = '{}'", file_path);
+    let mut stmt = conn.prepare(&sql).unwrap();
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(TblFile {
+                file_path: row.get(0).unwrap(),
+                file_size: row.get(1).unwrap(),
+                file_md5: row.get(2).unwrap(),
+            })
+        })
+        .unwrap();
+    for tbl_file in rows {
+        let tbl_file = tbl_file.unwrap();
+        return Some(tbl_file);
+    }
+    None
+}
 fn is_same_file(path_a: &Path, path_b: &Path) -> bool {
     let size_a = fs::metadata(path_a).unwrap().len();
     let size_b = fs::metadata(path_b).unwrap().len();
