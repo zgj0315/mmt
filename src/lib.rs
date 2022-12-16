@@ -11,10 +11,14 @@ use walkdir::WalkDir;
 pub fn copy_raw_file(input_path: &Path, output_path: &Path) {
     let db_path = output_path.join("file.db");
     let conn = Connection::open(db_path).unwrap();
-    let sql = "CREATE TABLE IF NOT EXISTS tbl_file (
+    let sql = "CREATE TABLE IF NOT EXISTS tbl_output_file (
         file_path  TEXT PRIMARY KEY,
         file_size  INTEGER NOT NULL,
         file_md5  TEXT NOT NULL
+    )";
+    conn.execute(sql, ()).unwrap();
+    let sql = "CREATE TABLE IF NOT EXISTS tbl_input_file (
+        file_path  TEXT PRIMARY KEY
     )";
     conn.execute(sql, ()).unwrap();
     let walk_dir = WalkDir::new(input_path);
@@ -30,6 +34,15 @@ pub fn copy_raw_file(input_path: &Path, output_path: &Path) {
                 .ends_with(".cr2")
             {
                 let input_file_path = entry.path();
+                let file_path = input_file_path
+                    .strip_prefix(input_path.to_str().unwrap())
+                    .unwrap()
+                    .to_str()
+                    .unwrap();
+                if !need_copy(file_path, &conn) {
+                    log::info!("already copied file {:?}", input_file_path);
+                    continue 'walk_dir;
+                }
                 let create_time = get_create_time(input_file_path);
                 let yyyy = create_time.format("%Y").to_string();
                 let yyyymm = create_time.format("%Y%m").to_string();
@@ -116,7 +129,7 @@ struct TblFile {
 }
 fn get_output_file_from_db(file_path: &str, conn: &Connection) -> Option<TblFile> {
     let sql = format!(
-        "SELECT file_size, file_md5 FROM tbl_file WHERE file_path = '{}'",
+        "SELECT file_size, file_md5 FROM tbl_output_file WHERE file_path = '{}'",
         file_path
     );
     let mut stmt = conn.prepare(&sql).unwrap();
@@ -156,7 +169,7 @@ fn is_same_file(input_path: &Path, output_path: &Path, file_path: &str, conn: &C
             let mut buf = Vec::new();
             file_b.read_to_end(&mut buf).unwrap();
             let md5 = format!("{:X}", md5::compute(buf));
-            let sql = "INSERT INTO tbl_file (
+            let sql = "INSERT INTO tbl_output_file (
                 file_path, file_size, file_md5
             ) VALUES (
                 ?1, ?2, ?3
@@ -165,7 +178,6 @@ fn is_same_file(input_path: &Path, output_path: &Path, file_path: &str, conn: &C
             md5
         }
     };
-
     if md5_a == md5_b {
         log::info!("same md5, {:?} and {:?}", input_path, output_path);
         return true;
@@ -174,6 +186,24 @@ fn is_same_file(input_path: &Path, output_path: &Path, file_path: &str, conn: &C
     }
 }
 
+fn need_copy(file_path: &str, conn: &Connection) -> bool {
+    let sql = format!(
+        "SELECT file_path FROM tbl_input_file WHERE file_path = '{}'",
+        file_path
+    );
+    let mut stmt = conn.prepare(&sql).unwrap();
+    if stmt.exists([]).unwrap() {
+        return false;
+    } else {
+        let sql = "INSERT INTO tbl_input_file (
+            file_path
+        ) VALUES (
+            ?1
+        )";
+        conn.execute(sql, (file_path,)).unwrap();
+        return true;
+    }
+}
 #[cfg(test)]
 mod tests {
     use std::{
