@@ -40,37 +40,24 @@ pub fn copy_raw_file(input_path: &Path, output_path: &Path) {
                 let mut output_file_path;
                 let mut count = 0;
                 'count_loop: loop {
+                    let output_file_name = input_file_path.file_name().unwrap().to_str().unwrap();
                     if count == 0 {
-                        let input_file_name =
-                            input_file_path.file_name().unwrap().to_str().unwrap();
-                        output_file_path = output_path.join(input_file_name);
-                        if output_file_path.exists() {
-                            if is_same_file(input_file_path, &output_file_path) {
-                                log::info!("file {:?} already exists", input_file_path);
-                                continue 'walk_dir;
-                            }
-                            count += 1;
-                        } else {
-                            break 'count_loop;
-                        }
+                        output_file_path = output_path.join(output_file_name);
                     } else {
-                        let input_file_name =
-                            input_file_path.file_name().unwrap().to_str().unwrap();
-                        let (file_name, suffix) = input_file_name.split_once(".").unwrap();
+                        let (file_name, suffix) = output_file_name.split_once(".").unwrap();
                         let input_file_name = format!("{}_{}.{}", file_name, count, suffix);
                         output_file_path = output_path.join(input_file_name);
-                        if output_file_path.exists() {
-                            if is_same_file(input_file_path, &output_file_path) {
-                                log::info!("file {:?} already exists", input_file_path);
-                                continue 'walk_dir;
-                            }
-                            count += 1;
-                        } else {
-                            break 'count_loop;
+                    }
+                    if output_file_path.exists() {
+                        if is_same_file(input_file_path, &output_file_path) {
+                            log::info!("file {:?} already exists", input_file_path);
+                            continue 'walk_dir;
                         }
+                        count += 1;
+                    } else {
+                        break 'count_loop;
                     }
                 }
-
                 log::info!("copying {:?} to {:?}", input_file_path, output_file_path);
                 copy(input_file_path, output_file_path).unwrap();
             }
