@@ -44,9 +44,9 @@ pub fn copy_raw_file(input_path: &Path, output_path: &Path) {
                     if count == 0 {
                         output_file_path = output_path.join(output_file_name);
                     } else {
-                        let (file_name, suffix) = output_file_name.split_once(".").unwrap();
-                        let input_file_name = format!("{}_{}.{}", file_name, count, suffix);
-                        output_file_path = output_path.join(input_file_name);
+                        let (file_name, suffix) = output_file_name.rsplit_once(".").unwrap();
+                        output_file_path =
+                            output_path.join(format!("{}_{}.{}", file_name, count, suffix));
                     }
                     if output_file_path.exists() {
                         if is_same_file(input_file_path, &output_file_path) {
