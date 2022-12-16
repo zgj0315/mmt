@@ -33,23 +33,30 @@ pub fn copy_raw_file(input_path: &Path, output_path: &Path) {
                 let create_time = get_create_time(input_file_path);
                 let yyyy = create_time.format("%Y").to_string();
                 let yyyymm = create_time.format("%Y%m").to_string();
-                let output_path = output_path.join(yyyy).join(yyyymm);
-                if !output_path.exists() {
-                    create_dir_all(&output_path).unwrap();
+                let output_path_date = output_path.join(yyyy).join(yyyymm);
+                if !output_path_date.exists() {
+                    create_dir_all(&output_path_date).unwrap();
                 }
                 let mut output_file_path;
                 let mut count = 0;
                 'count_loop: loop {
-                    let output_file_name = input_file_path.file_name().unwrap().to_str().unwrap();
                     if count == 0 {
-                        output_file_path = output_path.join(output_file_name);
+                        let output_file_name =
+                            input_file_path.file_name().unwrap().to_str().unwrap();
+                        output_file_path = output_path_date.join(output_file_name);
                     } else {
-                        let (file_name, suffix) = output_file_name.rsplit_once(".").unwrap();
+                        let file_stem = input_file_path.file_stem().unwrap().to_str().unwrap();
+                        let extension = input_file_path.extension().unwrap().to_str().unwrap();
                         output_file_path =
-                            output_path.join(format!("{}_{}.{}", file_name, count, suffix));
+                            output_path_date.join(format!("{}_{}.{}", file_stem, count, extension));
                     }
                     if output_file_path.exists() {
-                        if is_same_file(input_file_path, &output_file_path) {
+                        let file_path = output_file_path
+                            .strip_prefix(output_path.to_str().unwrap())
+                            .unwrap()
+                            .to_str()
+                            .unwrap();
+                        if is_same_file(input_file_path, &output_file_path, file_path, &conn) {
                             log::info!("file {:?} already exists", input_file_path);
                             continue 'walk_dir;
                         }
@@ -104,19 +111,20 @@ fn get_create_time(path: &Path) -> DateTime<Local> {
 }
 #[derive(Debug)]
 struct TblFile {
-    file_path: String,
     file_size: usize,
     file_md5: String,
 }
 fn get_output_file_from_db(file_path: &str, conn: &Connection) -> Option<TblFile> {
-    let sql = format!("SELECT * FROM tbl_file WHERE file_path = '{}'", file_path);
+    let sql = format!(
+        "SELECT file_size, file_md5 FROM tbl_file WHERE file_path = '{}'",
+        file_path
+    );
     let mut stmt = conn.prepare(&sql).unwrap();
     let rows = stmt
         .query_map([], |row| {
             Ok(TblFile {
-                file_path: row.get(0).unwrap(),
-                file_size: row.get(1).unwrap(),
-                file_md5: row.get(2).unwrap(),
+                file_size: row.get(0).unwrap(),
+                file_md5: row.get(1).unwrap(),
             })
         })
         .unwrap();
@@ -126,23 +134,40 @@ fn get_output_file_from_db(file_path: &str, conn: &Connection) -> Option<TblFile
     }
     None
 }
-fn is_same_file(path_a: &Path, path_b: &Path) -> bool {
-    let size_a = fs::metadata(path_a).unwrap().len();
-    let size_b = fs::metadata(path_b).unwrap().len();
-    if size_a != size_b {
-        log::info!("diff size, {:?} and {:?}", path_a, path_b);
+fn is_same_file(input_path: &Path, output_path: &Path, file_path: &str, conn: &Connection) -> bool {
+    let tbl_file = get_output_file_from_db(file_path, &conn);
+    let input_size = fs::metadata(input_path).unwrap().len();
+    let output_size = match &tbl_file {
+        Some(tbl_file) => tbl_file.file_size as u64,
+        None => fs::metadata(output_path).unwrap().len(),
+    };
+    if input_size != output_size {
+        log::info!("diff size, {:?} and {:?}", input_path, output_path);
         return false;
     }
-    let mut file_a = File::open(path_a).unwrap();
-    let mut file_b = File::open(path_b).unwrap();
+    let mut file_a = File::open(input_path).unwrap();
     let mut buf = Vec::new();
     file_a.read_to_end(&mut buf).unwrap();
-    let md5_a = md5::compute(buf);
-    let mut buf = Vec::new();
-    file_b.read_to_end(&mut buf).unwrap();
-    let md5_b = md5::compute(buf);
+    let md5_a = format!("{:X}", md5::compute(buf));
+    let md5_b = match tbl_file {
+        Some(tbl_file) => tbl_file.file_md5,
+        None => {
+            let mut file_b = File::open(output_path).unwrap();
+            let mut buf = Vec::new();
+            file_b.read_to_end(&mut buf).unwrap();
+            let md5 = format!("{:X}", md5::compute(buf));
+            let sql = "INSERT INTO tbl_file (
+                file_path, file_size, file_md5
+            ) VALUES (
+                ?1, ?2, ?3
+            )";
+            conn.execute(sql, (file_path, output_size, &md5)).unwrap();
+            md5
+        }
+    };
+
     if md5_a == md5_b {
-        log::info!("same md5, {:?} and {:?}", path_a, path_b);
+        log::info!("same md5, {:?} and {:?}", input_path, output_path);
         return true;
     } else {
         return false;
@@ -229,8 +254,22 @@ mod tests {
     // cargo test lib::tests::test_is_same_file -- --nocapture
     #[test]
     fn test_is_same_file() {
-        let path_a = Path::new("/Volumes/photo/original/2022/202202/20220205/IMG_2455.CR2");
-        let path_b = Path::new("/Volumes/photo/original/2022/202202/20220205/IMG_2455.CR2");
-        println!("same: {}", is_same_file(path_a, path_b));
+        // let path_a = Path::new("/Volumes/photo/original/2022/202202/20220205/IMG_2455.CR2");
+        // let path_b = Path::new("/Volumes/photo/original/2022/202202/20220205/IMG_2455.CR2");
+        // println!("same: {}", is_same_file(path_a, path_b));
+    }
+
+    // cargo test lib::tests::test_code -- --nocapture
+    #[test]
+    fn test_code() {
+        let path = Path::new("./output/");
+        let path_date = path.join("2022").join("202212");
+        let path_str = path.to_str().unwrap();
+        let path_date_str = path_date.to_str().unwrap();
+        println!("path_str: {}, path_date_str: {}", path_str, path_date_str);
+        let date = path_date_str.replace(path_str, "");
+        println!("date: {}", date);
+        let date = path_date.strip_prefix(path_str).unwrap();
+        println!("date: {}", date.to_str().unwrap());
     }
 }
