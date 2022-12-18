@@ -148,6 +148,10 @@ fn get_output_file_from_db(file_path: &str, conn: &Connection) -> Option<TblFile
     None
 }
 fn is_same_file(input_path: &Path, output_path: &Path, file_path: &str, conn: &Connection) -> bool {
+    if input_path == output_path {
+        log::info!("same file, {:?}", input_path);
+        return false;
+    }
     let tbl_file = get_output_file_from_db(file_path, &conn);
     let input_size = fs::metadata(input_path).unwrap().len();
     let output_size = match &tbl_file {
