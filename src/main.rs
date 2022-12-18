@@ -1,9 +1,8 @@
-mod lib;
 use std::env;
 use std::path::Path;
 use std::process;
 
-use lib::copy_raw_file;
+use mmt::copy_raw_file;
 
 fn main() {
     let format = tracing_subscriber::fmt::format()

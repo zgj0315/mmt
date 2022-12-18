@@ -218,7 +218,7 @@ mod tests {
     use chrono::{DateTime, Local};
     use walkdir::WalkDir;
 
-    use super::{get_create_time, is_same_file};
+    use super::get_create_time;
 
     #[test]
     fn it_works() {
