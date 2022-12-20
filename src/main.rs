@@ -23,7 +23,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 4 {
         log::error!("arguments error!");
-        log::error!("eg: {} [raw|jpg] ./input ./output", args[0]);
+        log::error!("eg: {} [raw|jpg|heic] ./input ./output", args[0]);
         process::exit(1);
     }
 
@@ -42,6 +42,8 @@ fn main() {
         copy_file(".cr2", input_path, output_path);
     } else if input_type.eq("jpg") {
         copy_file(".jpg", input_path, output_path);
+    } else if input_type.eq("heic") {
+        copy_file(".heic", input_path, output_path);
     } else {
         log::error!("input type {:?} is not supported", input_type);
         process::exit(1);
