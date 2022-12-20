@@ -91,6 +91,7 @@ fn put_dir_to_db(suffix: &str, input_path: &Path, conn: &Connection) {
                     .unwrap()
                     .to_str()
                     .unwrap();
+                log::info!("find file: {}", file_path);
                 let sql = format!(
                     "SELECT file_path FROM tbl_input_file WHERE file_path = '{}'",
                     file_path
@@ -119,8 +120,13 @@ pub fn get_create_time(path: &Path) -> DateTime<Local> {
             Some(data_time) => {
                 // 2022-01-23 12:42:12
                 let value = &data_time.display_value().to_string();
-                let (year, value) = value.split_once("-").unwrap();
-                let (month, value) = value.split_once("-").unwrap();
+                let value = value.replace("\"", "");
+                let mut split = "-";
+                if value.contains(".") {
+                    split = ".";
+                }
+                let (year, value) = value.split_once(split).unwrap();
+                let (month, value) = value.split_once(split).unwrap();
                 let (day, value) = value.split_once(" ").unwrap();
                 let (hour, value) = value.split_once(":").unwrap();
                 let (minute, second) = value.split_once(":").unwrap();
