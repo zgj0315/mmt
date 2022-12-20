@@ -6,5 +6,6 @@ Multimedia Management Tool
 ### 按照时间归档
 按照多媒体文件创建时间，分类归档文件
 ```
-mmt src_dir dst_dir
+mmt raw src_dir dst_dir/raw
+mmt jpg src_dir dst_dir/jpg
 ```

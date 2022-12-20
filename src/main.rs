@@ -5,6 +5,8 @@ use std::process;
 use multimedia::copy_file;
 mod multimedia;
 
+// cargo run raw ./input ./output/raw
+// cargo run jpg ./input ./output/jpg
 fn main() {
     let format = tracing_subscriber::fmt::format()
         .with_level(true)
