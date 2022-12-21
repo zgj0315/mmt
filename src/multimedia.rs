@@ -73,6 +73,18 @@ fn put_dir_to_db(suffix: &str, input_path: &Path, conn: &Connection) {
         copy_time  INTEGER NOT NULL
     )";
     conn.execute(sql, ()).unwrap();
+    let sql = "SELECT * FROM tbl_input_file";
+    let mut stmt = conn.prepare(sql).unwrap();
+    if stmt.exists([]).unwrap() {
+        // 数据库里不为空
+        let sql = "SELECT * FROM tbl_input_file WHERE copy_time = -1";
+        let mut stmt = conn.prepare(sql).unwrap();
+        if !stmt.exists([]).unwrap() {
+            // copy_time不存在-1，说明上次扫描完毕
+            log::info!("cancel scan dir, all file in db.");
+            return;
+        }
+    }
     // 遍历目录，写入数据库
     for entry in WalkDir::new(input_path) {
         let entry = entry.unwrap();
@@ -100,15 +112,18 @@ fn put_dir_to_db(suffix: &str, input_path: &Path, conn: &Connection) {
                 if stmt.exists([]).unwrap() {
                 } else {
                     let sql = "INSERT INTO tbl_input_file (
-                            file_path, copy_time
-                        ) VALUES (
-                            ?1, ?2
-                        )";
-                    conn.execute(sql, (file_path, 0)).unwrap();
+                    file_path, copy_time
+                ) VALUES (
+                    ?1, ?2
+                )";
+                    conn.execute(sql, (file_path, -1)).unwrap();
                 }
             }
         }
     }
+    // 如果扫描完成，将copy_time设置为零
+    let sql = "UPDATE tbl_input_file SET copy_time = 0 WHERE copy_time = -1";
+    conn.execute(sql, ()).unwrap();
 }
 
 pub fn get_create_time(path: &Path) -> DateTime<Local> {
