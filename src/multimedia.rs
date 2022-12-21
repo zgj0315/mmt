@@ -161,7 +161,7 @@ pub fn get_create_time(path: &Path) -> DateTime<Local> {
                                 path,
                                 &date_time.display_value().to_string()
                             );
-                            panic!();
+                            return Local::now();
                         }
                         chrono::LocalResult::Single(create_time) => return create_time,
                         chrono::LocalResult::Ambiguous(min, max) => {
