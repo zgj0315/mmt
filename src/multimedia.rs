@@ -116,37 +116,55 @@ pub fn get_create_time(path: &Path) -> DateTime<Local> {
     let mut buf_reader = BufReader::new(file);
     let reader = Reader::new();
     match reader.read_from_container(&mut buf_reader) {
-        Ok(exif) => match exif.get_field(Tag::DateTimeOriginal, In::PRIMARY) {
-            Some(data_time) => {
-                // 2022-01-23 12:42:12
-                let value = &data_time.display_value().to_string();
-                let value = value.replace("\"", "");
-                let mut split = "-";
-                if value.contains(".") {
-                    split = ".";
-                }
-                let (year, value) = value.split_once(split).unwrap();
-                let (month, value) = value.split_once(split).unwrap();
-                let (day, value) = value.split_once(" ").unwrap();
-                let (hour, value) = value.split_once(":").unwrap();
-                let (minute, second) = value.split_once(":").unwrap();
-                let create_time = Local
-                    .with_ymd_and_hms(
+        Ok(exif) => {
+            match exif.get_field(Tag::DateTimeOriginal, In::PRIMARY) {
+                Some(date_time) => {
+                    // 2022-01-23 12:42:12
+                    let value = &date_time.display_value().to_string();
+                    let value = value.replace("\"", "");
+                    let mut split = "-";
+                    if value.contains(".") {
+                        split = ".";
+                    }
+                    let (year, value) = value.split_once(split).unwrap();
+                    let (month, value) = value.split_once(split).unwrap();
+                    let (day, value) = value.split_once(" ").unwrap();
+                    let (hour, value) = value.split_once(":").unwrap();
+                    let (minute, second) = value.split_once(":").unwrap();
+                    let create_time = Local.with_ymd_and_hms(
                         year.parse().unwrap(),
                         month.parse().unwrap(),
                         day.parse().unwrap(),
                         hour.parse().unwrap(),
                         minute.parse().unwrap(),
                         second.parse().unwrap(),
-                    )
-                    .unwrap();
-                return create_time;
+                    );
+                    match create_time {
+                        chrono::LocalResult::None => {
+                            log::error!(
+                                "local result none, file: {:?}, date_time: {}",
+                                path,
+                                &date_time.display_value().to_string()
+                            );
+                            panic!();
+                        }
+                        chrono::LocalResult::Single(create_time) => return create_time,
+                        chrono::LocalResult::Ambiguous(min, max) => {
+                            log::error!(
+                            "local result ambiguous, file: {:?}, date_time: {}, min: {}, max: {}",
+                            path,
+                            &date_time.display_value().to_string(),min,max
+                        );
+                            panic!();
+                        }
+                    }
+                }
+                None => {
+                    log::error!("DateTimeOriginal not exist");
+                    return Local::now();
+                }
             }
-            None => {
-                log::error!("DateTimeOriginal not exist");
-                return Local::now();
-            }
-        },
+        }
         Err(e) => {
             log::error!("get_create_time error: {:?}", e);
             return Local::now();
