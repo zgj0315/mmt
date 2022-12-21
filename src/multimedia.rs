@@ -243,9 +243,9 @@ mod tests {
         put_dir_to_db(".cr2", input_path, &conn);
     }
 
-    // cargo test multimedia::tests::test_copy_jpg_file -- --nocapture
+    // cargo test multimedia::tests::test_copy_file -- --nocapture
     #[test]
-    fn test_copy_jpg_file() {
+    fn test_copy_file() {
         let input_path = Path::new("./input");
         let output_path = Path::new("./output");
         copy_file(".jpg", input_path, output_path);
