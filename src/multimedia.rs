@@ -161,7 +161,7 @@ pub fn get_create_time(path: &Path) -> DateTime<Local> {
                                 path,
                                 &date_time.display_value().to_string()
                             );
-                            panic!();
+                            return Local.with_ymd_and_hms(2000, 1, 1, 0, 0, 0).unwrap();
                         }
                         chrono::LocalResult::Single(create_time) => return create_time,
                         chrono::LocalResult::Ambiguous(min, max) => {
@@ -176,13 +176,13 @@ pub fn get_create_time(path: &Path) -> DateTime<Local> {
                 }
                 None => {
                     log::error!("DateTimeOriginal not exist");
-                    return Local::now();
+                    return Local.with_ymd_and_hms(2000, 1, 1, 0, 0, 0).unwrap();
                 }
             }
         }
         Err(e) => {
             log::error!("get_create_time error: {:?}", e);
-            return Local::now();
+            return Local.with_ymd_and_hms(2000, 1, 1, 0, 0, 0).unwrap();
         }
     }
 }
