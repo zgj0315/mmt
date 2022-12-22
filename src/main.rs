@@ -2,17 +2,27 @@ use std::env;
 use std::path::Path;
 use std::process;
 
+use chrono::Local;
 use multimedia::copy_file;
+use tracing_subscriber::fmt::format::Writer;
+use tracing_subscriber::fmt::time::FormatTime;
 mod multimedia;
 
 // cargo run raw ./input ./output/raw
 // cargo run jpg ./input ./output/jpg
 fn main() {
+    struct LocalTimer;
+    impl FormatTime for LocalTimer {
+        fn format_time(&self, w: &mut Writer<'_>) -> std::fmt::Result {
+            write!(w, "{}", Local::now().format("%F %T%.3f"))
+        }
+    }
     let format = tracing_subscriber::fmt::format()
         .with_level(true)
         .with_target(false)
         .with_thread_ids(false)
-        .with_thread_names(false);
+        .with_thread_names(false)
+        .with_timer(LocalTimer);
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .with_writer(std::io::stdout)
