@@ -3,10 +3,9 @@ use std::path::Path;
 use std::process;
 
 use chrono::Local;
-use multimedia::copy_file;
+use mmt::multimedia::copy_file;
 use tracing_subscriber::fmt::format::Writer;
 use tracing_subscriber::fmt::time::FormatTime;
-mod multimedia;
 
 // cargo run raw ./input ./output/raw
 // cargo run jpg ./input ./output/jpg

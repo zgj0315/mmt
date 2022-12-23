@@ -199,12 +199,12 @@ pub fn is_same_file(input_path: &Path, output_path: &Path) -> bool {
         return false;
     }
     let mut file = File::open(input_path).unwrap();
-    let mut buf = Vec::new();
-    file.read_to_end(&mut buf).unwrap();
+    let mut buf = [0u8; 1024];
+    file.read(&mut buf).unwrap();
     let input_md5 = format!("{:X}", md5::compute(buf));
     let mut file = File::open(output_path).unwrap();
-    let mut buf = Vec::new();
-    file.read_to_end(&mut buf).unwrap();
+    let mut buf = [0u8; 1024];
+    file.read(&mut buf).unwrap();
     let output_md5 = format!("{:X}", md5::compute(buf));
     if input_md5 == output_md5 {
         log::info!("same md5, {:?} and {:?}", input_path, output_path);
