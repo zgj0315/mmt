@@ -7,8 +7,8 @@ use mmt::multimedia::copy_file;
 use tracing_subscriber::fmt::format::Writer;
 use tracing_subscriber::fmt::time::FormatTime;
 
-// cargo run raw ./input ./output/raw
-// cargo run jpg ./input ./output/jpg
+// cargo run --bin copy_file raw ./input ./output/raw
+// cargo run --bin copy_file jpg ./input ./output/jpg
 fn main() {
     struct LocalTimer;
     impl FormatTime for LocalTimer {

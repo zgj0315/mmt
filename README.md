@@ -1,12 +1,34 @@
-# 多媒体管理工具
-## 缩写含义
+# mmt
 Multimedia Management Tool
 
-## 功能列表
-### 按照时间归档
-按照多媒体文件创建时间，分类归档文件
+# copy_file
+copy multimedia file to path by capture datetime
+
+## Usage
+### Build
+```shell
+cargo build --release
+
 ```
-mmt raw src_dir dst_dir
-mmt jpg src_dir dst_dir
-mmt heic src_dir dst_dir
+
+### Examples
+```shell
+copy_file raw ./input ./output/raw
+copy_file jpg ./input ./output/jpg
+copy_file heic ./input ./output/heic
 ```
+
+## License
+
+Licensed under either of
+
+ * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any
+additional terms or conditions.
