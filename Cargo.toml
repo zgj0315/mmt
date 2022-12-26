@@ -5,6 +5,7 @@ version = "0.2.0"
 
 [dependencies]
 chrono = "0.4"
+is_copy = "0.1"
 kamadak-exif = "0.5"
 log = "0.4"
 md5 = "0.7"

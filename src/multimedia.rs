@@ -1,14 +1,14 @@
 use std::{
-    fs::{self, copy, create_dir_all, File},
-    io::{BufReader, Read},
+    fs::{copy, create_dir_all, File},
+    io::BufReader,
     path::Path,
 };
 
 use chrono::{DateTime, Local, TimeZone};
 use exif::{In, Reader, Tag};
+use is_copy::is_file_copy;
 use rusqlite::Connection;
 use walkdir::WalkDir;
-
 #[derive(Debug)]
 struct TblInputFile {
     file_path: String,
@@ -49,7 +49,7 @@ pub fn copy_file(suffix: &str, input_path: &Path, output_path: &Path) {
                     output_path_date.join(format!("{}_{}.{}", file_stem, count, extension));
             }
             if output_file_path.exists() {
-                if is_same_file(&input_file_path, &output_file_path) {
+                if is_file_copy(&input_file_path, &output_file_path) {
                     log::info!("file {:?} already exists", input_file_path);
                     continue 'walk_dir;
                 }
@@ -184,33 +184,6 @@ pub fn get_create_time(path: &Path) -> DateTime<Local> {
             log::error!("get_create_time error: {:?}", e);
             return Local.with_ymd_and_hms(2000, 1, 1, 0, 0, 0).unwrap();
         }
-    }
-}
-
-pub fn is_same_file(input_path: &Path, output_path: &Path) -> bool {
-    if input_path == output_path {
-        log::info!("same file, {:?}", input_path);
-        return true;
-    }
-    let input_size = fs::metadata(input_path).unwrap().len();
-    let output_size = fs::metadata(output_path).unwrap().len();
-    if input_size != output_size {
-        log::info!("diff size, {:?} and {:?}", input_path, output_path);
-        return false;
-    }
-    let mut file = File::open(input_path).unwrap();
-    let mut buf = [0u8; 1024];
-    file.read(&mut buf).unwrap();
-    let input_md5 = format!("{:X}", md5::compute(buf));
-    let mut file = File::open(output_path).unwrap();
-    let mut buf = [0u8; 1024];
-    file.read(&mut buf).unwrap();
-    let output_md5 = format!("{:X}", md5::compute(buf));
-    if input_md5 == output_md5 {
-        log::info!("same md5, {:?} and {:?}", input_path, output_path);
-        return true;
-    } else {
-        return false;
     }
 }
 
