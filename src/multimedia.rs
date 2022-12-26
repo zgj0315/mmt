@@ -29,7 +29,7 @@ pub fn copy_file(suffix: &str, input_path: &Path, output_path: &Path) {
     'walk_dir: for tbl_input_file in tbl_input_file_iter {
         let file_path = tbl_input_file.unwrap().file_path;
         let input_file_path = input_path.join(&file_path);
-        let create_time = get_create_time(&input_file_path);
+        let create_time = get_capture_date(&input_file_path);
         let yyyy = create_time.format("%Y").to_string();
         let yyyymm = create_time.format("%Y%m").to_string();
         let output_path_date = output_path.join(yyyy).join(yyyymm);
@@ -126,7 +126,7 @@ fn put_dir_to_db(suffix: &str, input_path: &Path, conn: &Connection) {
     conn.execute(sql, ()).unwrap();
 }
 
-pub fn get_create_time(path: &Path) -> DateTime<Local> {
+fn get_capture_date(path: &Path) -> DateTime<Local> {
     let file = File::open(path).unwrap();
     let mut buf_reader = BufReader::new(file);
     let reader = Reader::new();
