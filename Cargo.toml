@@ -8,7 +8,7 @@ license = "MIT/Apache-2.0"
 name = "mmt"
 readme = "README.md"
 repository = "https://github.com/zgj0315/mmt/"
-version = "0.2.1"
+version = "0.2.2"
 
 [[bin]]
 name = "copy_file"
