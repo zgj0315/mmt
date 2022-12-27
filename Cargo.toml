@@ -4,11 +4,11 @@ description = "Multimedia Management Tool"
 documentation = "https://docs.rs/mmt"
 edition = "2021"
 keywords = ["multimedia", "tool", "copy_file"]
-license = "MIT/Apache-2.0"
+license-file = "LICENSE"
 name = "mmt"
 readme = "README.md"
 repository = "https://github.com/zgj0315/mmt/"
-version = "0.2.2"
+version = "0.2.3"
 
 [[bin]]
 name = "copy_file"
