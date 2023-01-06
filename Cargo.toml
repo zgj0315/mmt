@@ -8,7 +8,7 @@ license-file = "LICENSE"
 name = "mmt"
 readme = "README.md"
 repository = "https://github.com/zgj0315/mmt/"
-version = "0.2.3"
+version = "0.2.4"
 
 [[bin]]
 name = "copy_file"
@@ -16,6 +16,7 @@ path = "src/copy_file.rs"
 
 [dependencies]
 chrono = "0.4"
+dev_util = "0.1"
 is_copy = "0.1"
 kamadak-exif = "0.5"
 log = "0.4"
