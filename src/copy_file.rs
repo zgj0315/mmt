@@ -2,32 +2,13 @@ use std::env;
 use std::path::Path;
 use std::process;
 
-use chrono::Local;
+use dev_util::log::log_init;
 use mmt::multimedia::copy_file;
-use tracing_subscriber::fmt::format::Writer;
-use tracing_subscriber::fmt::time::FormatTime;
 
 // cargo run --bin copy_file raw ./input ./output/raw
 // cargo run --bin copy_file jpg ./input ./output/jpg
 fn main() {
-    struct LocalTimer;
-    impl FormatTime for LocalTimer {
-        fn format_time(&self, w: &mut Writer<'_>) -> std::fmt::Result {
-            write!(w, "{}", Local::now().format("%F %T%.3f"))
-        }
-    }
-    let format = tracing_subscriber::fmt::format()
-        .with_level(true)
-        .with_target(false)
-        .with_thread_ids(false)
-        .with_thread_names(false)
-        .with_timer(LocalTimer);
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .with_writer(std::io::stdout)
-        .with_ansi(true)
-        .event_format(format)
-        .init();
+    log_init();
     // 处理输入参数，获取输入和输出路径
     let args: Vec<String> = env::args().collect();
     if args.len() != 4 {
